@@ -1,0 +1,352 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Role;
+use App\RoleUser;
+use App\User;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+//use Illuminate\Contracts\Session\Session;
+use Illuminate\Support\Facades\Hash;
+use Session;
+
+class AdminController extends Controller
+{
+
+
+	public function manage_admins(){
+		$data['adminlist'] = User::where('usertype',2)->get();
+		return view('manage-admins',$data);
+	}
+
+	public function add_new_admin(){
+		return view('add-new-admin');
+	}
+	
+	public function addStaff(){
+		return view('add-staff');
+	}
+
+	public function editStaff(Request $request, $adminsid){
+		
+		$data['admindata'] = User::where('id',$adminsid)->first();
+
+		return view('edit-staff',$data);
+    	}
+
+	public function edit_staff_post(Request $request, $adminsid){
+        
+		$data = array(
+            'name'                        => $request['name'],
+            'phone_no'                    => $request['phone_no'],
+            'status'                      => $request['status'],
+        );
+		
+		if ($request['yesno'] == "1" && strlen(trim($request['pwd']))) {			
+            $data['password'] = Hash::make($request['pwd']);
+		}
+
+        User::where('id', $adminsid)->update($data);
+		
+		Session::flash('message', "Records Updated successfully.");
+        return redirect('view-staff');
+        //return redirect('edit-admins/'.$adminsid);
+    }
+
+	public function viewStaff() {
+
+		$staffFilter = array(
+			'admin_id' => Auth::user()->id,
+		);
+		$data['staffList'] = User::where($staffFilter)->get();
+		return view('view-staff',$data);
+	}
+	
+	public function saveStaff(Request $request){
+
+        $msg = [
+            'name.required' => 'Enter Your Name',
+            'email.required' => 'Enter Your Last Name',
+            'phone_no.required' => 'Enter Your Mobile No',
+			'password.required' => 'Enter Your Password',
+			'cpassword.required' => 'Enter Your Confirm Password',
+        ];
+        $this->validate($request, [
+            'name' => 'required',
+            'phone_no' => 'required',
+            'email' => 'required|unique:users|email',
+            'password' => 'min:6',
+            'cpassword' => 'min:6|required_with:password|same:password'
+        ], $msg);
+
+
+        $admin = new User();
+        $admin->name       = $request['name'];
+		$admin->email      = $request['email'];
+        $admin->phone_no   = $request['phone_no'];
+        $admin->password   = bcrypt($request->cpassword);
+		$admin->admin_id   = Auth::user()->id;
+        $admin->status     = 1;
+		$admin->usertype   = 3;
+        $admin->whatsapp_api_key_lock   = 1;
+        $admin->email_api_key_lock      = 1;
+        $admin->sms_api_key_lock        = 1;
+        $admin->save();
+
+	    return redirect()->route('add-staff')->with('message','Successfully registered.');
+	}
+
+	public function save_admin(Request $request){
+
+        $msg = [
+            'name.required' => 'Enter Your Name',
+            'email.required' => 'Enter Your Last Name',
+            'phone_no.required' => 'Enter Your Mobile No',
+			'password.required' => 'Enter Your Password',
+			'cpassword.required' => 'Enter Your Confirm Password',
+        ];
+        $this->validate($request, [
+            'name' => 'required',
+            'phone_no' => 'required',
+            'email' => 'required|unique:users|email',
+            'password' => 'min:6',
+            'cpassword' => 'min:6|required_with:password|same:password'
+        ], $msg);
+
+
+        $admin = new User();
+        $admin->name       = $request['name'];
+		$admin->email      = $request['email'];
+        $admin->phone_no   = $request['phone_no'];
+        $admin->password   = bcrypt($request->cpassword);
+        $admin->status     = 1;
+		$admin->usertype   = 2;
+        $admin->whatsapp_api_key_lock   = 1;
+        $admin->email_api_key_lock      = 1;
+        $admin->sms_api_key_lock        = 1;
+        $admin->save();
+
+	    return redirect()->route('add-new-admin')->with('message','Successfully registered.');
+	}
+
+    public function edit_admins(Request $request, $adminsid){
+
+		$data['admindata'] = User::where('id',$adminsid)->first();
+
+		return view('edit-admins',$data);
+    }
+
+
+
+    public function edit_admins_post(Request $request, $adminsid){
+        
+		$data = array(
+            'name'                        => $request['name'],
+            'phone_no'                    => $request['phone_no'],
+            'status'                      => $request['status'],
+            'whatsapp_api_key_lock'       => $request['whatsapp_api_key_lock'],
+            'email_api_key_lock'          => $request['email_api_key_lock'],
+            'sms_api_key_lock'            => $request['sms_api_key_lock'],
+			'sms_api_key'                 => strlen(trim($request['sms-api-key'])) > 0 ? trim($request['sms-api-key']) : null,			
+			'sms_from_name'            => strlen(trim($request['sms-username'])) > 0 ? trim($request['sms-username']) : null,
+			'email_api_key'               => strlen(trim($request['email-api-key'])) > 0 ? trim($request['email-api-key']) : null,
+			'whatsapp_api_key'            => strlen(trim($request['whatsapp-api-key'])) > 0 ? trim($request['whatsapp-api-key']) : null,
+			'whatsapp_username'            => strlen(trim($request['whatsapp-username'])) > 0 ? trim($request['whatsapp-username']) : null,
+        );
+		
+		if ($request['yesno'] == "1" && strlen(trim($request['pwd']))) {			
+            $data['password'] = Hash::make($request['pwd']);
+		}
+
+        User::where('id', $adminsid)->update($data);
+			
+	/*
+		$userId = $adminsid;
+		$plan = $request['user-plans'];
+		$days = "15 days"; //trial plan
+		
+		if ($plan == "2") {
+			$days = "90 days";
+		} else if ($plan == "3") {
+			$days = "180 days";
+		} else if ($plan == "4") {
+			$days = "365 days";
+		}
+		
+		$startDate = $request['plan-start-date'];
+		
+		$endDate = date('Y-m-d', strtotime($startDate. ' + '.$days));
+		
+		$existPlan =  DB::table('user_plan_details')->select('id')->where('user_id', $adminsid)->count();
+	
+		if(!$existPlan) {
+			DB::insert('insert into user_plan_details (user_id,user_plans_id,start_date,end_date) values(?,?,?,?)',[$userId,$plan,$startDate,$endDate]);
+		} else {
+			$planData = array(
+				"user_plans_id" => $plan,
+				"start_date" => $startDate,
+				"end_date" => $endDate
+			);
+			
+			$affected = DB::table('user_plan_details')->where('user_id', $adminsid)->update($planData);			
+		}
+	*/	
+        Session::flash('message', "Records Updated successfully.");
+        return redirect('manage-admins');
+        //return redirect('edit-admins/'.$adminsid);
+    }
+
+    public function edit_admins_post1(Request $request, $adminsid){
+        
+		$data = array(
+            'name'                        => $request['name'],
+            'phone_no'                    => $request['phone_no'],
+            'status'                      => $request['status'],
+            'whatsapp_api_key_lock'       => $request['whatsapp_api_key_lock'],
+            'email_api_key_lock'          => $request['email_api_key_lock'],
+            'sms_api_key_lock'            => $request['sms_api_key_lock'],
+			'sms_api_key'                 => strlen(trim($request['sms-api-key'])) > 0 ? trim($request['sms-api-key']) : null,			
+			'sms_from_name'            => strlen(trim($request['sms-username'])) > 0 ? trim($request['sms-username']) : null,
+			'email_api_key'               => strlen(trim($request['email-api-key'])) > 0 ? trim($request['email-api-key']) : null,
+			'whatsapp_api_key'            => strlen(trim($request['whatsapp-api-key'])) > 0 ? trim($request['whatsapp-api-key']) : null,
+			'whatsapp_username'            => strlen(trim($request['whatsapp-username'])) > 0 ? trim($request['whatsapp-username']) : null,
+        );
+		
+		if ($request['yesno'] == "1" && strlen(trim($request['pwd']))) {			
+            $data['password'] = Hash::make($request['pwd']);
+		}
+
+        User::where('id', $adminsid)->update($data);
+
+        Session::flash('message', "Records Updated successfully.");
+        return redirect('manage-admins');
+        //return redirect('edit-admins/'.$adminsid);
+    }
+
+    /**
+    * GET ACTIVE-IN-ACTIVE USERS DETAILS
+    *
+    * @return true or false
+    */
+    public function active_inactive_user(Request $request) {
+
+        $id     = $request->get('id');
+        $status = $request->get('status');
+
+        if($status==1){
+            User::where('id',$id)->update([
+                'status' => 2,
+            ]);
+            $st   = 'InActive';
+            $html = '<a href="javascript:void(0);" class="btn btn-warning" onclick="active_inactive_user('.$id.','.$st.')"><i class="fa fa-lock"></i></a>&emsp;';
+            return json_encode(array('id' => $id, 'html' => $html));
+        }
+        else{
+            User::where('id',$id)->update([
+                'status' => 1,
+            ]);
+            $st   = 'Active';
+            $html = '<a href="javascript:void(0);" class="btn btn-success" onclick="active_inactive_user('.$id.','.$st.')"><i class="fa fa-check-circle"></i></a>&emsp;';
+            return json_encode(array('id' => $id, 'html' => $html));
+        }
+    }
+
+	public function showReport(Request $request) {
+		 $id = $request->get('id');
+		 echo $id; die;
+		 
+	}
+	
+	public function setSettings(Request $request){
+		//$data["whatsappapikey"] = User::where('id',Auth::user()->id)->get()[0]->whatsapp_api_key;
+        //$data["whatsapp_username"] = User::where('id',Auth::user()->id)->get()[0]->whatsapp_username;
+		//return view("whats-app-api-capture",$data);		
+		return view('admin-settings');
+	}
+	
+	public function postWhatsAppPlan(){
+		
+		
+		$inputArray = array(		
+			"username" => "AYAN SAHA",
+			"password" => "BANGALORE@2020",
+			"customerUsername" => "a.saha",
+			"plan" => "reseller_user_server_single_credit_500_15_days",
+			"note" => "Setting 500 Credits"
+		);
+		
+	
+        $url       = "https://app.messageautosender.com/api/v1/reseller/customer/applyPlan";
+        $ch        = curl_init( $url );
+        $payload   = json_encode($inputArray );
+        curl_setopt( $ch, CURLOPT_POSTFIELDS, $payload );
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true );
+
+        # Send request.
+        $Fetchresult = curl_exec($ch);
+		
+		print_r($Fetchresult); die;
+        $curl_errno  = curl_errno($ch);
+        $curl_error  = curl_error($ch);
+        curl_close($ch);
+
+        # Print response.
+        if ($curl_errno > 0) {
+            echo "cURL Error ($curl_errno): $curl_error <br/>";
+            return "IF Case..";
+        } else {
+        
+		}
+	}
+
+
+
+	public function webhookVerify(Request $request) {
+
+             $input = json_decode(file_get_contents('php://input'), true);	
+             $pageId = isset($input['entry'][0]['changes'][0]['value']['page_id']) ? $input['entry'][0]['changes'][0]['value']['page_id'] : 0;
+	     $formId = isset($input['entry'][0]['changes'][0]['value']['page_id']) ? $input['entry'][0]['changes'][0]['value']['form_id'] : 0;
+
+	     if ($pageId != "0" && $formId != "0") {
+
+		$lead = DB::table('users')->where([['page_id', "$pageId"],['form_id',"$formId"]])->select('leadgen_id')->get();
+		
+		if(null !== $lead) {
+
+
+		}	
+		
+
+	     }
+
+\Log::info('Incoming verification token: ' . $test); // I added this line
+	if ($request->get('hub_mode') === 'subscribe' && $request->get('hub_verify_token') === "abc123") {
+		return Response::create($request->get('hub_challenge'))->send();
+	}
+/*
+		error_log(print_r($request->input()),true);
+$request_body = file_get_contents('php://input');
+
+error_log(print_r($request_body),true);
+
+		$challenge = $_REQUEST['hub_challenge'];
+		$verify_token = $_REQUEST['hub_verify_token'];
+
+
+		if ($verify_token === "abc123") {
+
+
+			$request_body = file_get_contents('php://input')
+
+			error_log('testwebhook');
+			echo $challenge;
+		}
+*/
+
+	}
+
+}

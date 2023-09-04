@@ -1,0 +1,177 @@
+<?php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\User;
+use Session;
+use Auth;
+use DB;
+//use Hash;
+use App\Models\Lead;
+use Illuminate\Support\Facades\Hash;
+class DashboardController extends Controller
+{
+
+    public function __construct()
+    {
+       $this->middleware('auth');
+    }
+
+    /**
+     * Show the Admin Dashboard Page.
+     *
+     * @return \Illuminate\Http\Response
+     */
+	public function dashboard(Request $request){
+
+        $data["total_leds"] = Lead::where('user_id',Auth::user()->id)->count();
+        $data["uploads_leds"] = Lead::where('user_id',Auth::user()->id)->where('source','Upload')->count();
+        $data["self_leds"] = Lead::where('user_id',Auth::user()->id)->where('source','Self')->count();
+	$data["assigned_leads"] = Lead::where('assigned_to',Auth::user()->id)->count();
+	$data["total_users"] = User::where('usertype',2)->count();
+	return view("dashboard",$data);
+	}
+
+    /**
+     * Show the Whats app API Capture
+     *
+     * @return \Illuminate\Http\Response
+     */
+	 
+	public function whats_app_api_capture(Request $request){
+        $data["whatsappapikey"] = User::where('id',Auth::user()->id)->get()[0]->whatsapp_api_key;
+        $data["whatsapp_username"] = User::where('id',Auth::user()->id)->get()[0]->whatsapp_username;
+		return view("whats-app-api-capture",$data);
+	}
+	/**
+     * Show the Whats app API Capture POST
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function post_whats_app_api_capture(Request $request){
+
+            $data = array(
+                'whatsapp_api_key'                    => $request['whatsapp_api_key'],
+                'whatsapp_username'                   => $request['whatsapp_username'],
+                'whatsapp_api_key_lock'               => 2,
+            );
+
+        User::where('id', Auth::user()->id)->update($data);
+
+        Session::flash('message', "Whats app API Capture Updated successfully.");
+        return redirect('whats-app-api-capture');
+    }
+
+
+    /**
+     * Show the Email API Capture
+     *
+     * @return \Illuminate\Http\Response
+     */
+	public function email_api_capture(Request $request){
+        $data["emailapikey"] = User::where('id',Auth::user()->id)->get()[0]->email_api_key;
+		return view("email-api-capture",$data);
+	}
+
+
+    /**
+     * Show the Email API Capture POST
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function post_email_api_capture(Request $request){
+
+        $data = array(
+            'email_api_key'                    => $request['email_api_key'],
+            'email_api_key_lock'               => 2,
+        );
+
+    User::where('id', Auth::user()->id)->update($data);
+
+    Session::flash('message', "Email API Capture Updated successfully.");
+    return redirect('email-api-capture');
+}
+
+    /**
+     * Show the SMS Api Capture
+     *
+     * @return \Illuminate\Http\Response
+     */
+	public function sms_api_capture(Request $request){
+        $data["smsapikey"] = User::where('id',Auth::user()->id)->get()[0]->sms_api_key;
+        $data["sms_from_name"] = User::where('id',Auth::user()->id)->get()[0]->sms_from_name;
+		return view("sms-api-capture",$data);
+	}
+
+    /**
+     * Show the Email API Capture POST
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function post_sms_api_capture(Request $request){
+
+        $data = array(
+            'sms_api_key'                    => $request['sms_api_key'],
+            'sms_from_name'                  => $request['sms_from_name'],
+            'sms_api_key_lock'               => 2,
+        );
+
+    User::where('id', Auth::user()->id)->update($data);
+
+    Session::flash('message', "Sms API Capture Updated successfully.");
+    return redirect('sms-api-capture');
+}
+
+
+
+    /**
+     * Show the Change Password
+     *
+     * @return \Illuminate\Http\Response
+     */
+	public function change_password(Request $request){
+
+		return view("change-password");
+	}
+
+	public function post_user_update_password(Request $request){
+
+        $this->validate(request(),[
+            'oldpassword'                    => 'required',
+            'new_password'                   => 'required',
+            'c_f_password'                   => 'required|same:new_password',
+        ]);
+
+
+        if (!Hash::check($request['oldpassword'], Auth::user()->password)) {
+            Session::flash('error', "old password doesn't match.");
+            return redirect('/change-password');
+         }else{
+            DB::table('users')
+                ->where('id', Auth::user()->id)
+                ->update(array(
+                                'password'                    => Hash::make($request['c_f_password']),
+                            ));
+
+            Session::flash('message', "Password Updated Successfully.");
+            return redirect('change-password');
+         }
+
+
+
+
+}
+
+
+
+	public function adminlogout(Request $request)
+    {
+        Auth::guard('admin')->logout();
+        $request->session()->flush();
+        $request->session()->regenerate();
+        return redirect()->intended('/admin');
+    }
+
+
+}

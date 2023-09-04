@@ -1,0 +1,120 @@
+<?php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+use Helper;
+use Session;
+use DB;
+
+class HomeController extends Controller
+{
+    /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //$this->middleware('auth');
+    }
+
+    /**
+     * Show the application dashboard.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function index()
+    {   
+		return redirect('/dashboard');
+        return view('home');
+    }
+
+    public function contact_more_information(Request $request){
+
+		$request->validate([
+			'email' => 'required|unique:users',
+			'phone' => 'required|regex:/[0-9]{10}/'
+		]);
+
+        $toemail = 'mr.ayansaha@gmail.com';
+        
+		$data = array(
+        		    'name'             =>  $request['name'],
+            'phone'            =>  $request['phone'],
+            'email'            =>  $request['email'],
+            'company_name'     =>  $request['company_name']
+        );
+
+
+        Mail::send('contact_more_information_template', $data, function($message) use ($toemail){
+            $message->to($toemail)->subject('Need More Information');
+        });
+		
+		$user = new User();
+		$user->name  = $data['name'];
+		$user->email = $data['email'];
+		$user->phone_no = $data['phone'];
+		$user->usertype = "2";
+		$user->status = "2";
+		$user->password = Hash::make("123456");
+		$user->company_name = $data['company_name'];
+		$user->save();
+		$userId   = $user->id;
+		
+		$plan = "5";
+		$days = "3 days";
+		
+		date_default_timezone_set("Asia/Kolkata");
+		$startDate = date("Y-m-d");
+		
+		$endDate = date('Y-m-d', strtotime($startDate. ' + '.$days));
+		
+		DB::insert('insert into user_plan_details (user_id,user_plans_id,start_date,end_date) values(?,?,?,?)',[$userId,$plan,$startDate,$endDate]);
+		
+		$toemail = $data['email'];
+		
+		$userData = array(
+			"name" => $data['name'],
+			"startDate" => date("jS F, Y", strtotime($startDate)),
+			"endDate" => date("jS F, Y", strtotime($endDate)),
+			"email" => $data['email'],
+			"password" => "123456",
+			"welcome_mail" => "1"
+		);
+		
+		Mail::send('trial_plan_email_template', $userData, function($message) use ($toemail){
+                $message->to($toemail)->subject('Welcome to RealAuto');
+                });
+		
+		$usersmsapikey = User::where("id","8")->select("whatsapp_api_key")->get()[0];
+
+		$api = $usersmsapikey->whatsapp_api_key;
+		$mobileno = $data['phone'];
+		/*
+$msg = "Hi ".$data['name'].",
+Thank you for Applying 3 Days FREE Realauto Trial for your Business. Our Executive will soon connect you with USER ID & PASSWORD.
+
+
+Thanks & Regards
+RealAuto Team";
+*/
+ $msg = "Hi ".$data['name'].",
+Thank you for Applying 3 Days FREE Realauto Trial for your Business. Our Executive will soon connect you with USER ID & PASSWORD.
+
+
+Thanks & Regards
+RealAuto Team";
+
+
+		
+		//$msg = strip_tags($msg);		
+		$attachment = "https://realauto.in/assets/realauto-video/trial.mp4";
+		testsendwhatsappnew($api,$mobileno,$msg,$attachment);
+		
+        Session::flash('message', "Registeration Successfull. Your Login details will be send to your whatsapp & email shortly.");
+        return redirect('/');
+    }
+}
